@@ -109,7 +109,7 @@ class GoDaddyDNSUpdater(object):
         if not self._validate_domain_details():
             logging.warning('Aborting Domain Update as details failed to '
                             + 'validate')
-            return
+            exit(1)
 
         if self.domain_details['data'] == self.new_external_ip:
             # We already have the correct IP set.
@@ -155,10 +155,9 @@ if __name__ == '__main__':
                         + 'right value',
                         default=False)
     parser.add_argument('--log-level',
-                        help='Push the update even if we already have the '
-                        + 'right value',
+                        help='Set the logging level.',
                         default='info',
-                        choices=['info', 'debug', 'warning', 'error'])
+                        choices=['info', 'debug', 'warning', 'error', 'none'])
 
     args = vars(parser.parse_args())
 
@@ -170,8 +169,6 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.WARNING)
     elif args['log_level'] == 'error':
         logging.basicConfig(level=logging.ERROR)
-    else:
-        logging.basicConfig(level=logging.NOTSET)
 
     logging.debug('parse_args: %s', json.dumps(args, indent=2))
     logging.info('Started DNS Update Process')
