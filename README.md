@@ -21,7 +21,7 @@ The code won't push the record if the newly found IP address matches the current
 
 You can configure logging level with `--log-level`, and use one of `debug`, `info`, `warning`, `error`, or `none`.  Output is to stdOut by default.
 
-### Thanks ###
+### Credits ###
 This module uses the following excellent libraries to make life just a little bit simpler, and will make it easier to cope with API changes in future..:
 - [Cerberus](https://github.com/nicolaiarocci/cerberus)
 - [IPGetter](https://github.com/phoemur/ipgetter)
