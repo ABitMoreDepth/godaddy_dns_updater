@@ -9,6 +9,7 @@
 import argparse
 import json
 import logging
+import logging.handlers
 import requests
 
 import cerberus
@@ -44,7 +45,7 @@ class GoDaddyDNSUpdater(object):
             choice of 44 services.
         '''
         self.new_external_ip = ipgetter.myip()
-        logging.debug('New External IP: %s', self.new_external_ip)
+        logger.debug('New External IP: %s', self.new_external_ip)
 
     def get_domain_records(self, domain, record_type, record_name):
         '''
@@ -62,13 +63,13 @@ class GoDaddyDNSUpdater(object):
 
         response = requests.get(self.base_uri + url, headers=self.headers)
         data = response.json()
-        logging.debug(json.dumps(data, indent=2))
+        logger.debug(json.dumps(data, indent=2))
 
         if len(data) == 1:
             self.domain_details = dict(data[0])
         else:
-            logging.warning('Got an unexpected result from domain details'
-                            + ' retrieval!')
+            logger.warning('Got an unexpected result from domain details'
+                           + ' retrieval!')
 
     def _validate_domain_details(self):
         '''
@@ -93,13 +94,13 @@ class GoDaddyDNSUpdater(object):
             }
         }
         validator = cerberus.Validator(schema)
-        logging.debug('Checking integrity of Domain Details')
+        logger.debug('Checking integrity of Domain Details')
         data_valid = validator.validate(self.domain_details)
         if data_valid:
-            logging.debug('Domain data is valid.')
+            logger.debug('Domain data is valid.')
             return True
         else:
-            logging.warning('Domain data is invalid: %s', validator.errors)
+            logger.warning('Domain data is invalid: %s', validator.errors)
             return False
 
     def update_godaddy_dns(self):
@@ -107,13 +108,13 @@ class GoDaddyDNSUpdater(object):
             Update DNS record with current IP.
         '''
         if not self._validate_domain_details():
-            logging.warning('Aborting Domain Update as details failed to '
-                            + 'validate')
+            logger.warning('Aborting Domain Update as details failed to '
+                           + 'validate')
             exit(1)
 
         if self.domain_details['data'] == self.new_external_ip:
             # We already have the correct IP set.
-            logging.info('IP Address already current')
+            logger.info('IP Address already current')
             exit(0)
 
         self.domain_details['data'] = self.new_external_ip
@@ -122,19 +123,20 @@ class GoDaddyDNSUpdater(object):
             type=self.record_type,
             name=self.record_name
         )
-        logging.debug('New Domain Record: %s', json.dumps(self.domain_details,
-                                                          indent=2))
+        logger.debug('New Domain Record: %s', json.dumps(self.domain_details,
+                                                         indent=2))
 
         response = requests.put(self.base_uri + url, headers=self.headers,
                                 json=self.domain_details)
 
         if response.status_code == 200:
-            logging.info('Updated Domain Settings, response: %s', json.dumps(
+            logger.info('Updated Domain Settings, response: %s', json.dumps(
                 response.json(), indent=2))
         else:
-            logging.error('Failed to update Domain Settings, Code: %d,'
-                          + ' Error: %s', response.status_code,
-                          json.dumps(response.json(), indent=2))
+            logger.error('Failed to update Domain Settings, Code: %d,'
+                         + ' Error: %s', response.status_code,
+                         json.dumps(response.json(), indent=2))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Update GoDaddy DNS Records')
@@ -161,17 +163,21 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
+    logger = logging.getLogger('logger')
     if args['log_level'] == 'info':
-        logging.basicConfig(level=logging.INFO)
+        logger.setLevel(logging.INFO)
     elif args['log_level'] == 'debug':
-        logging.basicConfig(level=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     elif args['log_level'] == 'warning':
-        logging.basicConfig(level=logging.WARNING)
+        logger.setLevel(logging.WARNING)
     elif args['log_level'] == 'error':
-        logging.basicConfig(level=logging.ERROR)
+        logger.setLevel(logging.ERROR)
 
-    logging.debug('parse_args: %s', json.dumps(args, indent=2))
-    logging.info('Started DNS Update Process')
+    handler = logging.handlers.SysLogHandler(address='/dev/log')
+    logger.addHandler(handler)
+
+    logger.debug('parse_args: %s', json.dumps(args, indent=2))
+    logger.info('Started DNS Update Process')
 
     Updater = GoDaddyDNSUpdater(args['API_KEY'],
                                 args['API_SECRET'])
@@ -181,4 +187,4 @@ if __name__ == '__main__':
 
     Updater.update_godaddy_dns()
 
-    logging.info('DNS Update Process Complete.')
+    logger.info('DNS Update Process Complete.')
