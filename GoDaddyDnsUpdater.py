@@ -9,7 +9,7 @@
 import argparse
 import json
 import logging
-import logging.handlers
+from logging.handlers import SysLogHandler
 import requests
 
 import cerberus
@@ -130,8 +130,9 @@ class GoDaddyDNSUpdater(object):
                                 json=self.domain_details)
 
         if response.status_code == 200:
-            logger.info('Updated Domain Settings, response: %s', json.dumps(
-                response.json(), indent=2))
+            logger.info('Updated Domain Settings, new IP: %s, response: %s',
+                        self.new_external_ip,
+                        json.dumps(response.json(), indent=2))
         else:
             logger.error('Failed to update Domain Settings, Code: %d,'
                          + ' Error: %s', response.status_code,
@@ -173,7 +174,8 @@ if __name__ == '__main__':
     elif args['log_level'] == 'error':
         logger.setLevel(logging.ERROR)
 
-    handler = logging.handlers.SysLogHandler(address='/dev/log')
+    handler = SysLogHandler(address='/dev/log',
+                            facility=SysLogHandler.LOG_DAEMON)
     logger.addHandler(handler)
 
     logger.debug('parse_args: %s', json.dumps(args, indent=2))
