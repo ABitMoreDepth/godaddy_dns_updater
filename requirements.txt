@@ -1,3 +1,0 @@
-Cerberus==1.0.1
-ipgetter==0.6
-requests==2.11.1

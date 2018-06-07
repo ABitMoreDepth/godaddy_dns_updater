@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 '''
     Simple module to pull in our external IP address, then use that to update
     goDaddy's DNS entry for our domain.
@@ -31,7 +31,7 @@ class GoDaddyDNSUpdater(object):
             }
 
         self.new_external_ip = ''
-        self.domain_details = {}
+        self.domain_details = []
 
         self.domain = ''
         self.record_type = ''
@@ -63,10 +63,10 @@ class GoDaddyDNSUpdater(object):
 
         response = requests.get(self.base_uri + url, headers=self.headers)
         data = response.json()
-        logger.debug(json.dumps(data, indent=2))
+        logger.debug('Existing Domain Data:\n%s', json.dumps(data, indent=2))
 
         if len(data) == 1:
-            self.domain_details = dict(data[0])
+            self.domain_details = data
         else:
             logger.warning('Got an unexpected result from domain details'
                            + ' retrieval!')
@@ -76,32 +76,41 @@ class GoDaddyDNSUpdater(object):
             Ensure that the Domain details we have are structurally Valid
         '''
         schema = {
-            'name': {
-                'type': 'string',
-                'required': True
-            },
-            'data': {
-                'type': 'string',
-                'required': True
-            },
-            'ttl': {
-                'type': 'integer',
-                'required': True
-            },
-            'type': {
-                'type': 'string',
-                'required': True
+            'domain_data': {
+                'type': 'list',
+                'schema': {
+                    'type': 'dict',
+                    'schema': {
+                        'name': {
+                            'type': 'string',
+                            'required': True
+                        },
+                        'data': {
+                            'type': 'string',
+                            'required': True
+                        },
+                        'ttl': {
+                            'type': 'integer',
+                            'required': True
+                        },
+                        'type': {
+                            'type': 'string',
+                            'required': True
+                        }
+                    }
+                }
             }
         }
+
         validator = cerberus.Validator(schema)
         logger.debug('Checking integrity of Domain Details')
-        data_valid = validator.validate(self.domain_details)
+        data_valid = validator.validate({'domain_data': self.domain_details})
         if data_valid:
             logger.debug('Domain data is valid.')
             return True
-        else:
-            logger.warning('Domain data is invalid: %s', validator.errors)
-            return False
+
+        logger.warning('Domain data is invalid: %s', validator.errors)
+        return False
 
     def update_godaddy_dns(self):
         '''
@@ -112,12 +121,12 @@ class GoDaddyDNSUpdater(object):
                            + 'validate')
             exit(1)
 
-        if self.domain_details['data'] == self.new_external_ip:
+        if self.domain_details[0]['data'] == self.new_external_ip:
             # We already have the correct IP set.
             logger.info('IP Address already current')
             exit(0)
 
-        self.domain_details['data'] = self.new_external_ip
+        self.domain_details[0]['data'] = self.new_external_ip
         url = '/v1/domains/{domain}/records/{type}/{name}'.format(
             domain=self.domain,
             type=self.record_type,
@@ -164,6 +173,10 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
+    logging.basicConfig(
+        format='[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d '
+               '-- %(thread)d] %(message)s'
+    )
     logger = logging.getLogger('logger')
     if args['log_level'] == 'info':
         logger.setLevel(logging.INFO)
@@ -174,9 +187,9 @@ if __name__ == '__main__':
     elif args['log_level'] == 'error':
         logger.setLevel(logging.ERROR)
 
-    handler = SysLogHandler(address='/dev/log',
-                            facility=SysLogHandler.LOG_DAEMON)
-    logger.addHandler(handler)
+    # handler = SysLogHandler(address='/dev/log',
+    #                         facility=SysLogHandler.LOG_DAEMON)
+    # logger.addHandler(handler)
 
     logger.debug('parse_args: %s', json.dumps(args, indent=2))
     logger.info('Started DNS Update Process')

@@ -1,0 +1,19 @@
+[[source]]
+
+name = "pypi"
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+
+
+[packages]
+
+cerberus = "==1.0.1"
+ipgetter = "==0.6"
+requests = "==2.11.1"
+
+
+[dev-packages]
+
+ipython = "*"
+pylint = "*"
+better-exceptions = "*"
